@@ -1,0 +1,25 @@
+data-loading	load	mobility	na.omit
+unnamed-chunk-1	Group	c	Explanation	kable	table	cbind	%>%	kable_styling	F
+mobility-map	ggplot	mobility	aes	Longitude	Latitude	Mobility	geom_point	coord_map	scale_color_gradient2	median	log10	borders
+pairs plots of continuous predictors	scatterplotMatrix	mobility	c
+correlation table	mobility1	mobility	c	cor_table	round	cor	kable	%>%	kable_styling	F
+boxplots of categorical predictors	mobility2	mobility	c	par	boxplot	Mobility	Racial_Segregation	Urban
+unnamed-chunk-2	outlier_ID1	mobility	ID	which	Mobility	sort	outlier_ID2	outlier_ID3	Student_teacher_ratio
+lm model	mob.lm	lm	Mobility	Income	School_spending	Student_teacher_ratio	I	Graduation	Urban	Racial_Segregation	mobility
+residual plot function	resid.vs.pred	standardized	resids	rstandard	mdl	residuals	pred	preds	fitted	data	plot	...	abline	mean.spline	smooth.spline	lines	sd	var.spline	x	y	sqrt
+residuals plots and QQ-plot for lm model	par	c	plot	mob.lm	resid.vs.pred	mobility
+np model	library	np	mob.np	npreg	Mobility	Income	School_spending	Student_teacher_ratio	Graduation	Urban	Racial_Segregation	mobility
+residuals plots and QQ-plot for np model	par	c	plot	fitted	mob.np	residuals	abline	mobility	Income	School_spending	Student_teacher_ratio	Graduation	qnorm	qqnorm	qqline
+summary linear model	summary_table	summary	mob.lm	coefficients	CI	confint	table	cbind	c	kable
+loop through all possibilities and make a model family	mobility	Student_teacher_ratio_square	Student_teacher_ratio	all.the.formulas	double	predictors_original	c	n	School_spending	Graduation	Urban	predictors	union	fmla	str_c
+divide the dataset into two parts	set.seed	select.rows	sample	nrow	mobility	floor	select.set	inference.set
+LOO-CV	cv.lm	return	mean	residuals	mdl	hatvalues
+unnamed-chunk-3	all.the.models	lapply	all.the.formulas	lm	fmla	select.set	all.the.LOOCVs	sapply	cv.lm	best.index	which.min	best_mdl	best.formula	formula	best_selection	str_c
+compute mse values	lm.cvmse	mean	residuals	mob.lm	hatvalues	lm2.cvmse	min	all.the.LOOCVs	npreg.cvmse	mob.np	MSE
+nonparametric plots	plot	mob.np
+histogram of student_teacher_ratio	ggplot	mobility	aes	Student_teacher_ratio	..density..	geom_histogram	ggtitle
+unnamed-chunk-4	mobility_ratio_under_20	mobility	Student_teacher_ratio	ratio	nrow	percent
+plotting-heatmap function	pred.vals.heatmap	library	ggplot2	nas	switch	class	fitted.model	rows.omit	na.action	stop	row.number	%in%	warning	which.min	nrow	dataset	newdf	data.frame	rep	npoints	xx	seq	min	xvar	max	yy	yvar	gg	expand.grid	Var1	Var2	preds	predict	ggplot	aes_string	geom_tile	scale_fill_continuous	low.color	high.color	guide_legend	legend.title	geom_point
+heat map of ratio and spending	pred.vals.heatmap	mobility	mob.np
+heat maps for the predictor Graduation	figure1	pred.vals.heatmap	mobility	mob.np	figure2	grid.arrange
+mobility map residuals	mobility	residuals	mob.np	ggplot	aes	Longitude	Latitude	geom_point	coord_map	scale_color_gradient2	median	borders

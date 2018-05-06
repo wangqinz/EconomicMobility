@@ -1,0 +1,28 @@
+data-loading	mobility
+mobility-map	.Random.seed
+pairs plots of continuous predictors	
+correlation table	cor_table	mobility1
+boxplots of categorical predictors	mobility2
+unnamed-chunk-1	Explanation	Group	table
+lm model	mob.lm
+residual plot function	resid.vs.pred
+residuals plots and QQ-plot for lm model	
+np model	mob.np
+residuals plots and QQ-plot for np model	qnorm
+unnamed-chunk-2	mobility	outlier_ID1	outlier_ID2	outlier_ID3
+nonparametric plots	
+histogram of student_teacher_ratio	
+unnamed-chunk-3	all.the.LOOCVs	all.the.models	best_mdl	best_selection	best.formula	best.index
+plotting-heatmap	pred.vals.heatmap
+mobility map residuals	mobility
+summary linear model	CI	summary_table	table
+loop through all possibilities and make a model family	all.the.formulas	fmla	Graduation	mobility	n	predictors	predictors_original	School_spending	Urban
+divide the dataset into two parts	inference.set	select.rows	select.set
+LOO-CV	cv.gam	cv.lm
+unnamed-chunk-4	mobility_ratio_under_20	ratio
+compute mse values	gam.cvmse	lm.cvmse	lm2.cvmse	npreg.cvmse	table
+plotting-heatmap function	pred.vals.heatmap
+heat map of ratio and spending	
+heat maps for the predictor Graduation	figure1	figure2
+gam	mob.gam
+residuals plots and QQ-plot for gam	

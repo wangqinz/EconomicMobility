@@ -1,0 +1,541 @@
+---
+title: "Economic Mobility Project"
+author: "Qinzhe Wang, Xinyi Xie"
+date: "4/21/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# General set-up for the report:
+# Don't print out code
+# Save results so that code blocks aren't re-run unless code
+# changes (cache), _or_ a relevant earlier code block changed (autodep),
+# don't clutter R output with messages or warnings (message, warning)
+library(MASS)
+library(knitr)
+library(ggplot2)
+library(mapproj)
+library(np)
+library(scales)
+library(car)
+library(stringr)
+library(cowplot)
+library(gridExtra)
+library(kableExtra)
+library(mgcv)
+opts_chunk$set(echo=FALSE,
+               cache=TRUE, autodep=TRUE,
+               message=FALSE, warning=FALSE)
+# Turn off meaningless clutter in summary() output
+options(show.signif.stars=FALSE)
+```
+
+# Introduction
+
+Economic mobility is the ability that an individual improves his or her economic status. It may be considered a type of social mobility, which is often measured in change in income. And economic mobility is often measured by movement between income quintiles ([Wikipedia](https://en.wikipedia.org/wiki/Economic_mobility)). The average mobility in a city may depend on numbers of factors, for example, location and education. Some economists suggest that in general, economic mobility increases as the educational effectiveness increased. 
+
+One of the main focuses of our research is to determine whether the idea is correct or not by finding the relationship between the educational quality and the economy across the USA. Also, if there is a relationship in between, we are able to predict economic mobility based on education level.
+
+# Exploratory data analysis
+
+### _Data introduction_
+```{r, data-loading, include=FALSE}
+load('mobility.Rdata')
+#dim(mobility) 741 rows 12 columns
+
+mobility<-na.omit(mobility) #remove rows with NA, 554 rows left
+```
+
+The dataset is taken from a comprehensive study examining factors which predict the ability of individuals to live out the American dream: move up in economic status, going from poor to rich. The dataset has 741 observations, which means that there are 741 communities in total, with numbers of rows containing missing values. And there are 12 columns in the given dataset:
+
+```{r}
+Group<-c("ID","Name","State","Income","Schooling_spending","Teacher_student_ratio","Graduation","Longitude","Latitude","Racial_Segregation","Urban","Mobility (dependent variable)")
+
+Explanation<-c("an index to identify the community","Name: city name or town name","State: the state where the city or the town located","average income in 2000","average tuition fee in public schools in the city.","the ratio between the number of students and the number of teachers","the residuals from a linear model \"Actual Graduation rate\" ~ \"household income per capita\"","the longitude of the community center","the latitude of the community center","the racial of segregation, separating into three levels (low, medium and high)","logical variable, whether the community is an urban or not","for one who was born between 1980 and 1982, the probability that the person jump into the top quintile from the lowest quintile at age 30")
+
+kable(table<-cbind(Group,Explanation),'html') %>%
+   kable_styling(bootstrap_options=c("striped", "hover"),full_width = F)
+```
+
+Regarding ID as the identification, I divide variables into the following groups for later using: Mobility is the dependent variable; State, Longitude and Latitude help to locate the community; Income, Racial_Segregation and Urban show some general information about the community; Schooling_spending, Teacher_student_ratio and Graduation are the measurements of educational effectiveness.
+
+### _Economic mobility map_
+
+```{r, mobility-map}
+ggplot(mobility, aes(x=Longitude, y=Latitude, color=Mobility)) + geom_point() +
+  coord_map() + 
+  scale_color_gradient2(midpoint=median(log10(mobility$Mobility), na.rm=TRUE), 
+                        low='blue', mid='white', high='red', trans='log10')+
+   borders('state',color='grey90')
+```
+
+Above is an economic mobility map. It shows the economic mobility over the US. We can see that most blue and purple points are shown in the southeastern US, indicating that the average mobility in the southeastern US is lower than average mobility. In the northwestern US, it mainly mixed with white and red points, with several blue points, indicating the location is higher in average mobility. The middle part of US mainly contains white points and several points with pale color, meaning that on average, people in the middle part of US has the mobility that is close to the average mobility. There are also some points outside the mainland United States, showing the mobility of community in Hawaii and Alaska. Overall, the divisions are clear.
+
+### _Pairs plots and correlation matrix_
+
+```{r pairs plots of continuous predictors}
+scatterplotMatrix(mobility[,c(3,5,6,7,8,9,10)],main="Scatterplot matrix of Continuous Predictors")
+```
+
+```{r correlation table}
+#mobility1 contains dependent variable and all continuous predictors
+mobility1<-mobility[,c(3,5,6,7,8,9,10)]
+
+#create a correlation table
+#round all values to 2 digits
+cor_table<-round(cor(mobility1),digits=2)
+kable(cor_table,"html") %>%
+  kable_styling(bootstrap_options=c("striped", "hover"),full_width = F)
+  
+#cor_table 
+```
+
+
+
+Above figure is the pairs plots of all continuous predictors, mainly visualizing one-to-one relationships. I also make a correlation table to check the exact number of correlation.
+
+The pairs plots above shows some obvious patterns among the variables. For example, it can be seen that Income is positively correlated with School_spending (correlation = `r cor_table[2,3]`) and Student_teacher_ratio (correlation = `r cor_table[2,4]`) and the correlations are pretty significant. Since both tuition fee and the ratio can be regarded as benchmarks of educational effectiveness, it is reasonable that in general, better education leads to higher income. And it is hard to observe the relationship between Income and Graduation from the plot. By checking the table, the correlation in between is `r cor_table[2,5]`, indicating a weak relationship.
+
+Also, the plot shows that School_spending is negatively related to Student_teacher_radio (correlation = `r cor_table[3,4]`), in general, the higher the tuition fee is, the lower the ratio is. It makes sense because usually higher school spending means higher education effectiveness. Low student_teacher_ratio is one of the symbols of high education quality. But we cannot clearly determine the correlation in the plot School_spending against Graduation. The correlation table shows the correlation is `r cor_table[3,5]`, which means the relationship in between is weak.
+
+I also add Mobility (dependent variable) into the pairs plots. All Income, School_spending, Student_teacher_ratio and Graduation are associated with mobility but none of the correlations are significant. These relationships can be found in the correlation table. And Income, School_spending and Graduation appear to show positive correlations while Student_teacher_ratio shows a negative correlation. Again, some relationships are not easy to determine by the plot, but we can check the correlation table to find how strong each one-to-one relationship is.
+
+As for the variable Longitude and Latitude, I believe that the Mobility somehow depends on the location difference (shown from the economic mobility map above), but the location information contains both Longitude and Latitude, if we only pick one of them (for example, Longitude), the influence is very small. Although both Longitude and Latitude are continuous variables, at least from the pairs plots, it is hard to determine the patterns. However, things are different in correlation table and economic mobility map. The correlation table suggests that there is a strong relationship between Mobility and Longitude (correlation = `r cor_table[1,6]`), so does the relationship between Mobility and Latitude (correlation = `r cor_table[1,7]`). It is true because economic mobility map shows that most high-mobility points are distributed in the northwestern US while most low-mobility points are in the southeastern US.
+
+### _Boxplots of categorical predictors_
+
+```{r boxplots of categorical predictors}
+#mobility2 contains dependent variable and all discrete predictors
+mobility2<-mobility[,c(3,11,12)] 
+
+par(mfrow=c(1,2))
+
+boxplot(Mobility~Racial_Segregation,data=mobility2,main="Mobility against Racial_Segregation",xlab="Racial_Segregation",ylab="Mobility",col="grey",outcol="red")
+
+boxplot(Mobility~Urban,data=mobility2,main="Mobility against Urban",xlab="Urban",ylab="Mobility",col="grey",outcol="red")
+```
+
+Above figures are two boxplots of dependent variable against categorical predictors.
+The figure on the left is the boxplot of Mobility against Racial_Segregation (three levels: "low", "moderate" and "high"). On average, the higher the segregation ratio is, the lower the mobility is. Since the average Mobility is `r format(round(mean(mobility$Mobility, na.rm=T),2),nsmall=2)`, which is a very small number, the difference between three levels of segregation ratio is not so large. The figure on the right is the boxplot of Mobility against Urban (logical variable, "yes" means that the community is primarily urban while "no" means not). On average, the community in a urban area has higher mobility than that in a rural area. For the same reason, the difference in between is small, too.
+
+### _Outliers_
+
+```{r}
+#the purpose of this chunk is to list some examples of ouliers.
+
+#in pairs plots, we notice that the two points with the highest and the second highest mobility are outliers.
+outlier_ID1<-mobility$ID[which(mobility$Mobility==sort(mobility$Mobility,decreasing=TRUE)[1])]
+outlier_ID2<-mobility$ID[which(mobility$Mobility==sort(mobility$Mobility,decreasing=TRUE)[2])]
+
+#also, the point with the highest Student_teacher_ratio is the outlier
+outlier_ID3<-mobility$ID[which(mobility$Student_teacher_ratio==sort(mobility$Student_teacher_ratio,decreasing=TRUE)[1])]
+
+mobility<-mobility[-which((mobility$ID) %in% c(26412,26410,34109)),]
+```
+
+We can observe from the pairs plots that there are some outliers shown in some panels. These outliers are the points which are far from the other points in the same panel. Two of obvious cases are the point with extreme high Mobility (ID = `r outlier_ID1` and ID =`r outlier_ID2`). We can see that in the plots of Mobility against Income, the point with the highest Mobility is far from the main tendency, which means there is one community with extreme high Mobility probability. But the Income level of the community is not so high. These two points are also shown in all panels related to Mobility.
+
+And some outliers occur in the pairs plot of Schooling_spending and Student_teacher_ratio. Usually, a school with high spending links to a low Student_teacher_ratio. But the community with highest Student_teacher_ratio is a special case (ID = `r outlier_ID3`). For this outlier, although the School_spending is above average, the number of students is much more than the number of teachers, which lays out of the main tendency in the plot. The outlier (ID = `r outlier_ID3`) can also be found in other panels related to Student_teacher_ratio,
+
+Then, as I mentioned above, the outliers in the plots that have relations to Longitude and Latitude show the community that located outsides the mainland. It is just geographic difference.
+
+Also, there are several outliers with high mobility rate in both boxplots. Since outliers occur in each category, the most reasonable explanation is that besides the predictors "Racial_Segregation" and "Urban", there are some other important influence factors of mobility.
+
+# Initial modelling
+
+### _Three models_
+
+In the initial modeling part, we will examine three kinds of models:
+
+* **Linear regression**: Linear regression is a linear approach to model the relationship between the dependent variable and predictors:
+$$Y = \beta_{0} + \beta_{1}X_{1} + ... + \beta_{p}X_{p}$$
+
+* **Kernel regression**: Kernel regression is a non-parametric technique, aiming to find a non-linear relationship between all predictors and dependent variable Y. The regression estimates the conditional expectation of all predictors: $E(Y|X)=f(X)$, where f(X) is an unknown function.
+
+* **Generalized additive model (GAM)**: Generalized additive model is a generalized linear model in which the linear predictor depends linearly on unknown smooth functions of some predictor ([Wikipedia](https://en.wikipedia.org/wiki/Generalized_additive_model)). 
+$$Y = \beta_{0} + f(x_{1}) + f(x_{2})... + f(x_{p})$$ 
+Compared to linear regression, GAM has higher prediction quality because it predicts the dependent variable by using unspecific functions of predictors. Also, generalized additive model is able choose various distributions of predictor variables, which can be regarded as another advantage for GAM.
+
+In this case, the regressions can be written as:
+
+* **First model (linear regression model)**: Mobility ~ Income+School_spending+Student_teacher_ratio+I(Student_teacher_ratio^2)+Graduation+Urban*Racial_Segregation
+
+* **Second model (kernel regression model)**: Mobility ~ Income+School_spending+Student_teacher_ratio+Graduation+Urban+Racial_Segregation 
+
+* **Third model (generalized additive model)**: Mobility ~ s(Income)+s(School_spending)+s(Student_teacher_ratio)+s(Graduation)+Urban+Racial_Segregation
+
+There is no need to include interaction terms or squared terms in the nonparametric regression as here nonparametric regression does Kernel regression estimate. Kernel regression will automatically include high degree terms and interactions between all variables.
+
+I use regular diagnostics to examine whether those models perform well: checking heteroscedasticity and normality of residuals.
+
+### _Diagnotic plots for three models_
+
+<div style= "float:left;position: relative; top: 0px; left: 0px;">
+
+```{r lm model}
+#model 1: linear model (linear regression)
+mob.lm = lm(Mobility~Income+School_spending+Student_teacher_ratio+I(Student_teacher_ratio^2)+Graduation+Urban*Racial_Segregation,data=mobility)
+
+```
+
+```{r residual plot function}
+# the function plots residuals against a predictor
+# Input: an lm model; the name of a predictor variable (defaults to "fitted"); 
+# the name of the data frame; whether to use standardized residuals;
+# other optional graphical settings
+# Output: none
+
+resid.vs.pred <- function(mdl, pred='fitted', data, standardized=TRUE, ...) {
+    if (standardized) {
+        resids <- rstandard(mdl)
+    } else {
+        resids <- residuals(mdl)
+    }
+    if (pred=="fitted") {
+        preds <- fitted(mdl)
+    } else {
+        preds <- data[,pred]
+    }
+    plot(preds, resids, xlab=pred, ylab="Residuals", ...)
+    abline(h=0, col="red") # Ideal
+    # Guide to the eye;
+    mean.spline <- smooth.spline(x=preds, y=resids, cv=TRUE)
+    lines(mean.spline, col="grey")
+    # \pm two standard deviations (again, as a guide to the eye)
+    abline(h=2*sd(resids), col="red", lty="dotted")
+    abline(h=-2*sd(resids), col="red", lty="dotted")
+    var.spline <- smooth.spline(x=preds, y=resids^2, cv=TRUE)
+    lines(x=var.spline$x, y=mean.spline$y+2*sqrt(var.spline$y), col="grey",
+          lty="dotted")
+    lines(x=var.spline$x, y=mean.spline$y-2*sqrt(var.spline$y), col="grey",
+          lty="dotted")
+}
+```
+
+```{r residuals plots and QQ-plot for lm model,warning= FALSE,fig.height = 2.5,fig.cap="Above linear model"}
+par(mfrow=c(1,2))
+
+plot(mob.lm,which=c(1,2))
+
+#resid.vs.pred(mob.lm,pred="Student_teacher_ratio",mobility)
+
+#par(mfrow=c(1,3))
+
+#resid.vs.pred(mob.lm,pred="Graduation",mobility)
+
+#resid.vs.pred(mob.lm,pred="Income",mobility)
+
+#resid.vs.pred(mob.lm,pred="School_spending",mobility)
+
+
+#plot(mob.lm)
+```
+
+```{r np model,echo=FALSE, results='hide'}
+#model 1: kernel model (nonparametric regression)
+library(np)
+mob.np<-npreg(Mobility~Income+School_spending+Student_teacher_ratio+Graduation+Urban+Racial_Segregation,data=mobility)
+```
+
+```{r residuals plots and QQ-plot for np model,fig.height = 2.5,fig.cap="Above kernel regression"}
+par(mfrow=c(1,2))
+plot(x=fitted(mob.np),y=residuals(mob.np))
+abline(h=0,lty="dotted")
+
+qnorm<-qqnorm(residuals(mob.np)) #check normality
+qqline(residuals(mob.np))
+
+#plot(x=mobility$Income,y=residuals(mob.np))
+#abline(h=0,col='red')
+
+#par(mfrow=c(1,3))
+#plot(x=mobility$School_spending,y=residuals(mob.np))
+#abline(h=0,col='red')
+
+#plot(x=mobility$Student_teacher_ratio,y=residuals(mob.np))
+#abline(h=0,col='red')
+
+#plot(x=mobility$Graduation,y=residuals(mob.np))
+#abline(h=0,col='red')
+
+```
+
+
+```{r gam,echo=FALSE}
+mob.gam<-gam(Mobility ~ s(Income)+s(School_spending)+s(Student_teacher_ratio)+s(Graduation)+Urban+Racial_Segregation,data=mobility)
+```
+
+```{r residuals plots and QQ-plot for gam,fig.height = 2.5,fig.cap="Above generalized additive model"}
+par(mfrow=c(1,2))
+
+plot(predict(mob.gam,newdata=mobility),residuals(mob.gam))
+abline(h=0,lty="dotted")
+
+qq.gam(mob.gam, type="deviance",pch=1)
+
+#plot(mobility$Income,residuals(mob.gam))
+#abline(h=0,col="red")
+
+#par(mfrow=c(1,3))
+
+#plot(mobility$School_spending,residuals(mob.gam))
+#abline(h=0,col="red")
+
+#plot(mobility$Student_teacher_ratio,residuals(mob.gam))
+#abline(h=0,col="red")
+
+#plot(mobility$Graduation,residuals(mob.gam))
+#abline(h=0,col="red")
+```
+
+</div>
+
+Six figures on the left are diagnostic plots for three different models (the first row for linear regression; the second row for kernel regression and the third row for the generalized additive model). They are quite similar in some way.
+
+For the linear regression model (two figures in the first row), the plot of residuals against fitted value show that although the means of the residuals are close to zero, the variance is not constant, that is, heteroscedasticity is not satisfied. And from the QQ-plot, there is a heavy tail on the right, indicating the residuals are not normally distributed. Also, there are several outliers shown in the plots. To summarize linear regression model does not satisfy both heteroscedasticity and normality.
+
+The diagnostic plots of the kernel regression model (second row) are quite like the plots of the linear regression model. In residual plots, residuals do not have constant variance; in QQ-plot, there is a heavy tail on the right. The kernel regression model also does not satisfy both heteroscedasticity and normality.
+
+As for the third model, generalized additive model, the diagnostic plots are similar to above two pairs. That may because of the dataset itself, the distribution of some predictors are not normal, which may influence some parametric tests as well as the heteroscedasticity and normality of the residuals.
+
+# Model selection of linear regression
+
+```{r summary linear model}
+summary_table<-summary(mob.lm)$coefficients
+CI<-confint(mob.lm)
+
+table<-cbind(summary_table,CI)[,c(1,4,5,6)]
+  
+table<-kable(table,digits=4)
+table
+```
+
+Above table contains the estimation of coefficients, P-value and 95% confidence interval of our initial linear model. We can see that School_spending, Graduation, Urbanno and the interaction term of Urbanno and Segregationmoderate have P-values that are larger than 0.05. Applying the hypothesis that $H_0: \beta=0$, we can draw a *rough* conclusion that those predictors are not significant but the variables Income, Student_teacher_ratio, squared Student_teacher_ratio and Racial_Segregation are significantly correlated to economic mobility. Then, whether include not significant terms can be a trade off. Our group decides to set significant variables as the fundamental model and do a model selection to find out the best model.
+
+```{r, loop through all possibilities and make a model family}
+# Create all the model formulae
+# We _could_ just type them all out, but that would take so long, and be
+# so error-prone, that it's better to do a _little_ automation
+# Start with a vector of model formulas
+# The one below would (eventually) have 16 models.
+
+mobility$Student_teacher_ratio_square<-(mobility$Student_teacher_ratio)^2
+
+all.the.formulas <-double(8) #pre-allocation
+
+predictors_original <- c("Income","Student_teacher_ratio","Student_teacher_ratio_square","Racial_Segregation")
+
+#Loop through all four undetermined predictors, every time loop through, add the formula to all.the.formulas.
+#Use functions 'union'
+# 1 represents TRUE while 0 represents FALSE.
+n <- 1 #the index of all fomulae
+
+for (School_spending in c(1,0)){
+    for (Graduation in c(1,0)){
+        for (Urban in c(1,0)) {
+            predictors<-predictors_original
+                  
+            if (School_spending){predictors <- union(predictors,"School_spending") }
+            if (Graduation) {predictors <- union(predictors,"Graduation")}
+            if (Urban){predictors<- union(predictors,"Urban")}
+            
+            fmla<-str_c('Mobility~',str_c(predictors,collapse="+"))
+            all.the.formulas[n]<-fmla
+            n<-n+1
+          }
+        }
+    }
+```
+
+The leave-one-out cross-validation is a model validation technique. To be more specific, we are going to fit all 16 models to 15 datasets, leaving one model out (the original model), examing how accurate a prediction model will perform in other 15 datasets. Then we will compare the mean squared error for all 16 models and determine the best model.
+
+```{r divide the dataset into two parts}
+set.seed(2) #fix random sampling
+
+# Divide the data in two, by random sampling of rows
+select.rows <- sample(1:nrow(mobility), replace=FALSE,
+                      size=floor(nrow(mobility)/2))
+
+# That half of the data set will now be used for selection
+select.set <- mobility[select.rows,]
+
+# The other half will be used for inference later
+inference.set <- mobility[-select.rows,]
+```
+
+
+```{r, LOO-CV}
+# Function to calculate LOO-CV score for a linear model
+# Input: a model as fit by lm()
+# Output: leave-one-out CV score
+
+cv.lm <- function(mdl) {
+   return(mean((residuals(mdl) / (1 - hatvalues(mdl)))^2)) 
+}
+
+cv.gam = function(gam) {
+  return(mean((residuals(gam)/(1-gam$hat))^2) )
+}
+
+```
+
+```{r}
+# Make a list containing all of the estimated models from all the
+# different formulas
+all.the.models <- lapply(all.the.formulas, function(fmla) { lm(fmla, data=select.set) })
+
+# Do leave-one-out CV for each model
+all.the.LOOCVs <- sapply(all.the.models, cv.lm)
+# Pick the best
+best.index <- which.min(all.the.LOOCVs)
+best_mdl <- all.the.models[[best.index]]
+best.formula <- formula(best_mdl) #the best model from model selection
+best_selection<-str_c('the best model is ',best.formula)[3]
+```
+
+The model selection tells that `r best_selection`. Now we are going to choose the best one among the following three models according to cross-validation score:
+
+* First model (initial linear regression model): Mobility ~ Income+School_spending+Student_teacher_ratio+I(Student_teacher_ratio^2)+Graduation+Urban*Racial_Segregation
+
+* Secon model (linear regression model from model selection): Mobility ~ Income+Student_teacher_ratio+I(Student_teacher_ratio^2)+Racial_Segregation + School_spending + Urban
+
+* Third model (kernel regression model): Mobility ~ Income+School_spending+Student_teacher_ratio+Graduation+Urban+Racial_Segregation
+
+* Forth model (generalized additive model): Mobility ~ s(Income)+s(School_spending)+s(Student_teacher_ratio)+s(Graduation)+Urban+Racial_Segregation
+
+
+# Final model inference/results
+
+### _Choose final model_
+
+```{r compute mse values}
+#the MSE of initial linear model
+lm.cvmse<-(mean((residuals(mob.lm) / (1 - hatvalues(mob.lm)))^2))
+
+#the MSE of linear model from model selection
+lm2.cvmse<-min(all.the.LOOCVs)
+
+#the MSE of np model
+npreg.cvmse<-mob.np$MSE
+
+gam.cvmse<-cv.gam(mob.gam)
+
+  
+#c(lm.cvmse,lm2.cvmse,npreg.cvmse)
+
+table<-cbind(Models=c("Linear regression","Linear regression from model selection","Kernel regression","Generalized additive model"),
+      MSE=c(format(round(lm.cvmse,digits=5),scientific=F),format(round(lm2.cvmse,digits=5),scientific=F,nsmll=),format(round(npreg.cvmse,digits=5),scientific=F),format(round(gam.cvmse,digits=5),scientific=F)))
+
+kable(table) %>%
+  kable_styling(bootstrap_options=c("striped", "hover"))
+```
+
+In order to find the final model, I apply cross validation and compare the mean squared error (MSE) of all three models. The MSE of initial linear regression is `r format(round(lm.cvmse,digits=5),scientific=F)`; the MSE of linear model from model selection is `r format(round(lm2.cvmse,digits=5),scientific=F)`, the MSE of kernel regression is `r format(round(npreg.cvmse,digits=5),scientific=F)` and the MSE of GAM is `r format(round(gam.cvmse,digits=5),scientific=F)`. Then I decide to choose the nonparametric regression model because it has lower MSE value.
+
+### _Educational effectiveness to mobility_
+
+```{r nonparametric plots}
+plot(mob.np,col="red")
+```
+
+In the research, my major concern is how educational effectiveness relates to mobility. Above six figures are plots of Mobility against each preditor in nonparametric model (best model). We mainly focus on three plots related to education (School_spending, Student_teacher_ratio and Graduation). 
+
+First, one interesting observation is that `Graduation` shows no association with Mobility because there is a horizontal line in the plot. The predictor `Graduation` is the residual from a linear regression of graduation rate against income. Or we can understand like the following: positive `Graduation` value means that the college graduation rate is above average while a negative value is below the average. The most reasonable explanation is that graduation rate is not a great measurement of eduational effectiveness. For example, students in some typical majors (law, medicine) may need more time to graduate.
+
+```{r histogram of student_teacher_ratio,include=FALSE}
+ggplot(mobility,aes(x=Student_teacher_ratio,y=..density..))+geom_histogram(bins=12,fill="red",color="black")+ggtitle("Histogram of Student_teacher_ratio")
+```
+
+```{r,echo=FALSE,results="hide"}
+#choose communities whose Student_teacher_ratio is between 15 and 20.
+mobility_ratio_under_20<-mobility[mobility$Student_teacher_ratio<20 & mobility$Student_teacher_ratio>15,]
+
+#the ratio shows how many schools have Student_teacher_ratio between 15 and 20.
+ratio<-nrow(mobility_ratio_under_20)/nrow(mobility)
+percent(ratio)
+```
+
+Then, for the Student_teacher_ratio, on average, mobility first declines as the ratio increasing, and then rises up. There is no denying that the low ratio means that students are able to get more help from teachers, then the educational quality will increase, leading to a high economic mobility probability. It is hard to tell why there is a concave when the ratio is around 18. The most proper interpretation is that since `r percent(ratio)` of schools have Student_teacher_ratio between 15 and 20, the situations are complex and there are various influence factors besides the ratio contributing to Mobility.
+
+As for School_spending, on average, the Mobility rises up in the beginning as the spending increases. Then there is an inflection point at School_Spending is around 8. When School_spending is relatively high, Mobility sharply goes up. It can be explained by that more school expenditures should be associated with more returns on average, then students are able to have a better studying environment as well as a higher eduational quality.
+
+### _Prediction figure_
+
+It is easier to use plots to demonstrate conclusion than the coefficients or the summary table because we can directly see what the pattern is in plots. Sometimes numbers are not intuitionistic, but plots are direct and visualized. Our group decides to draw heat maps for prediction then we are able to change two predictors together to see the changes in the pattern.
+
+```{r plotting-heatmap function}
+## This function produces a heatmap of predicted values against 2 predictors
+## Inputs: dataset, a model estimated with that dataset (either lm or np), the row number of the dataset to treat as the baseline, the name of the x-variable, the name of the y-variable and a title for the legend. Additional optional arguments are the number of points at which to create predictions (on each axis) and the colors to use
+## Outputs: none, produces a figure
+pred.vals.heatmap <- function(dataset, fitted.model, row.number, xvar, yvar,
+                              legend.title, npoints=100,
+                              low.color='blue',high.color='white'){
+  library(ggplot2)
+  nas = switch(class(fitted.model),
+               npregression = fitted.model$rows.omit,
+               lm = fitted.model$na.action,
+               stop('Invalid fitted model. Must be of output of npreg or lm')
+  )
+  if(row.number %in% nas){
+    warning('row.number contains missing data. So we default to the first complete case')
+    row.number = which.min(1:nrow(dataset) %in% nas)
+  }
+  newdf = data.frame(dataset[rep(row.number,npoints^2),])
+  xx = seq(min(dataset[xvar], na.rm=TRUE), max(dataset[xvar], na.rm=TRUE),
+           length.out=npoints)
+  yy = seq(min(dataset[yvar], na.rm=TRUE), max(dataset[yvar], na.rm=TRUE),
+           length.out=npoints)
+  gg = expand.grid(xx,yy)
+  newdf[xvar] = gg$Var1
+  newdf[yvar] = gg$Var2
+  newdf$preds = predict(fitted.model, newdata=newdf)
+  ggplot(newdf, aes_string(x=xvar, y=yvar, fill='preds')) +
+    geom_tile() + 
+    scale_fill_continuous(low=low.color, high=high.color,
+                          guide=guide_legend(title=legend.title)) +
+    geom_point(data=dataset, aes_string(x=xvar,y=yvar,fill=NULL))
+}
+```
+
+```{r heat map of ratio and spending}
+pred.vals.heatmap(mobility, mob.np, 100, 'Student_teacher_ratio', 'School_spending', 'Mobility Prediction',
+                  low.color = '#0b61a4', high.color = 'red')
+
+```
+
+The above figure shows the prediction of mobility based on educational effectiveness (Student_teacher_ratio) and education cost (School_spending). The reason why I do not choose Graduation but the other two is in the nonparametric model, Graduation does not relate to Mobility (see last part). In this prediction figure, there are some striking horizontal patterns, indicating that compared to Student_teacher_ratio, the School_Spending is more predominant in predicting economic mobility. For example, top region shows deep red color, which means that without considering too much of Student_teacher_ratio when there is very high school expenditure, the Mobility would also be very high.
+
+```{r heat maps for the predictor Graduation}
+#Graduation is not related to Mobility. I do not include Graduation in my prediction figure.
+figure1<-pred.vals.heatmap(mobility, mob.np, 100, 'Student_teacher_ratio', 'Graduation', 'Mobility Prediction', low.color = '#0b61a4', high.color = 'red')
+
+figure2<-pred.vals.heatmap(mobility, mob.np, 100, 'School_spending', 'Graduation', 'Mobility Prediction', low.color = '#0b61a4', high.color = 'red')
+
+grid.arrange(figure1,figure2)
+```
+
+Above two figures are heat maps with Graduation on the vertical axis. For both figures, the patterns are completely vertical, indicating that Graduation has no impact on economic mobility, or the influence is not significant. We can say that although Graduation is a measurement of education quality, it is not as significant as the other two (Student_teacher_ratio and School_spending).
+
+### _Residual mobility map_
+
+```{r mobility map residuals}
+#we want plot the residuals for the color.
+#create the residuals column first.
+mobility$residuals<-residuals(mob.np)
+
+#draw the residual map
+ggplot(mobility, aes(x=Longitude, y=Latitude, color=residuals)) + geom_point() +
+  coord_map() + 
+  scale_color_gradient2(midpoint=median(mobility$residuals, na.rm=TRUE), 
+                        low='blue', mid='white', high='red' )+
+   borders('state',color='grey90')
+```
+
+If the nonparametric model explains the geographic differences well, we should see patterns that all of the regions in the US are white as the residuals close to zero when fitted close to the original data. After plotting the residuals for the color shown on the map, we are able to find the pattern: the overall color is white. Also, we can find some regions showing underestimates or overestimates for Mobility. As the differences are not obvious, we can conclude that the model performs quite well even though there are some outliers with extreme high Mobility.
+
+# Conclusion
+
+According to our research, the educational quality is correlated to the economic mobility. In our dataset, both high school spending and low student-teacher-ratio are the symbols of high educational effectiveness, generally leading to a higher economic mobility ratio. In the other words, on average, the economic mobility ratio increases as the school spending increased, or as the student-teacher-ratio decreased. Although we are not able to provide the coefficients because Kernel regression is one of nonparametric models, we can predict the economic mobility based on the educational quality.
+
+
+

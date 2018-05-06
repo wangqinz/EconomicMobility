@@ -1,0 +1,13 @@
+base
+MASS
+knitr
+ggplot2
+maps
+mapproj
+np
+scales
+car
+stringr
+cowplot
+gridExtra
+kableExtra
