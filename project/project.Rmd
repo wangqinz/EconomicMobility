@@ -74,7 +74,7 @@ Above is an economic mobility map. It shows the economic mobility over the US. W
 ### _Pairs plots and correlation matrix_
 
 ```{r pairs plots of continuous predictors}
-scatterplotMatrix(mobility[,c(3,5,6,7,8,9,10)],main="Scatterplot matrix of Continuous Predictors")
+scatterplotMatrix(mobility[,c(3,5,6,7,8,9,10)],main="Scatterplot matrix of Continuous Predictors",col="black")
 ```
 
 ```{r correlation table}
@@ -503,7 +503,7 @@ pred.vals.heatmap(mobility, mob.np, 100, 'Student_teacher_ratio', 'School_spendi
 
 ```
 
-The above figure shows the prediction of mobility based on educational effectiveness (Student_teacher_ratio) and education cost (School_spending). The reason why I do not choose Graduation but the other two is in the nonparametric model, Graduation does not relate to Mobility (see last part). In this prediction figure, there are some striking horizontal patterns, indicating that compared to Student_teacher_ratio, the School_Spending is more predominant in predicting economic mobility. For example, top region shows deep red color, which means that without considering too much of Student_teacher_ratio when there is very high school expenditure, the Mobility would also be very high.
+The above figure shows the prediction of mobility based on educational effectiveness (Student_teacher_ratio) and education cost (School_spending). The reason why do not choose Graduation but the other two is in the nonparametric model, Graduation does not relate to Mobility (see last part). In this prediction figure, there are some striking horizontal patterns, indicating that compared to Student_teacher_ratio, the School_Spending is more predominant in predicting economic mobility. For example, top region shows deep red color, which means that without considering too much of Student_teacher_ratio when there is very high school expenditure, the Mobility would also be very high, or it is because the dataset contains some outliers (for example, there is only one point on the very top of the figure).
 
 ```{r heat maps for the predictor Graduation}
 #Graduation is not related to Mobility. I do not include Graduation in my prediction figure.
@@ -514,7 +514,7 @@ figure2<-pred.vals.heatmap(mobility, mob.np, 100, 'School_spending', 'Graduation
 grid.arrange(figure1,figure2)
 ```
 
-Above two figures are heat maps with Graduation on the vertical axis. For both figures, the patterns are completely vertical, indicating that Graduation has no impact on economic mobility, or the influence is not significant. We can say that although Graduation is a measurement of education quality, it is not as significant as the other two (Student_teacher_ratio and School_spending).
+Above two figures are heat maps with Graduation on the vertical axis and Student teacher ratio/School spending on the horizontal axis. For both figures, the patterns are completely vertical, indicating that Graduation has no impact on economic mobility, or the influence is very tiny. Although Graduation can be a measurement of education quality sometimes, it is not as significant as the other two (Student_teacher_ratio and School_spending) measures.
 
 ### _Residual mobility map_
 
