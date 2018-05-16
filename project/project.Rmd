@@ -11,6 +11,20 @@ output: html_document
 # Save results so that code blocks aren't re-run unless code
 # changes (cache), _or_ a relevant earlier code block changed (autodep),
 # don't clutter R output with messages or warnings (message, warning)
+
+# install.packages("MASS")
+# install.packages("knitr")
+# install.packages("ggplot2")
+# install.packages("mapproj")
+# install.packages("np")
+# install.packages("scales")
+# install.packages("car")
+# install.packages("stringr")
+# install.packages("cowplot")
+# install.packages("gridExtra")
+# install.packages("kableExtra")
+# install.packages("mgcv")
+
 library(MASS)
 library(knitr)
 library(ggplot2)
@@ -125,17 +139,28 @@ The figure on the left is the boxplot of Mobility against Racial_Segregation (th
 
 #in pairs plots, we notice that the two points with the highest and the second highest mobility are outliers.
 outlier_ID1<-mobility$ID[which(mobility$Mobility==sort(mobility$Mobility,decreasing=TRUE)[1])]
+name1<-mobility$Name[which(mobility$ID==outlier_ID1)]
+state1<-mobility$State[which(mobility$ID==outlier_ID1)]
+
+
 outlier_ID2<-mobility$ID[which(mobility$Mobility==sort(mobility$Mobility,decreasing=TRUE)[2])]
+name2<-mobility$Name[which(mobility$ID==outlier_ID2)]
+state2<-mobility$State[which(mobility$ID==outlier_ID2)]
 
 #also, the point with the highest Student_teacher_ratio is the outlier
 outlier_ID3<-mobility$ID[which(mobility$Student_teacher_ratio==sort(mobility$Student_teacher_ratio,decreasing=TRUE)[1])]
+name3<-mobility$Name[which(mobility$ID==outlier_ID3)]
+state3<-mobility$State[which(mobility$ID==outlier_ID3)]
+
+
+
 
 mobility<-mobility[-which((mobility$ID) %in% c(26412,26410,34109)),]
 ```
 
-We can observe from the pairs plots that there are some outliers shown in some panels. These outliers are the points which are far from the other points in the same panel. Two of obvious cases are the point with extreme high Mobility (ID = `r outlier_ID1` and ID =`r outlier_ID2`). We can see that in the plots of Mobility against Income, the point with the highest Mobility is far from the main tendency, which means there is one community with extreme high Mobility probability. But the Income level of the community is not so high. These two points are also shown in all panels related to Mobility.
+We can observe from the pairs plots that there are some outliers shown in some panels. These outliers are the points which are far from the other points in the same panel. Two of obvious cases are the point with extreme high Mobility: ID = `r outlier_ID1` (`r name1 ` in `r state1`) and ID =`r outlier_ID2` (`r name2 ` in `r state2`). We can see that in the plots of Mobility against Income, the point with the highest Mobility is far from the main tendency, which means there is one community with extreme high Mobility probability. But the Income level of the community is not so high. These two points are also shown in all panels related to Mobility.
 
-And some outliers occur in the pairs plot of Schooling_spending and Student_teacher_ratio. Usually, a school with high spending links to a low Student_teacher_ratio. But the community with highest Student_teacher_ratio is a special case (ID = `r outlier_ID3`). For this outlier, although the School_spending is above average, the number of students is much more than the number of teachers, which lays out of the main tendency in the plot. The outlier (ID = `r outlier_ID3`) can also be found in other panels related to Student_teacher_ratio,
+And some outliers occur in the pairs plot of Schooling_spending and Student_teacher_ratio. Usually, a school with high spending links to a low Student_teacher_ratio. But the community with highest Student_teacher_ratio is a special case (ID = `r outlier_ID3`, `r name3 ` in `r state3`). For this outlier, although the School_spending is above average, the number of students is much more than the number of teachers, which lays out of the main tendency in the plot. The outlier can also be found in other panels related to Student_teacher_ratio,
 
 Then, as I mentioned above, the outliers in the plots that have relations to Longitude and Latitude show the community that located outsides the mainland. It is just geographic difference.
 
@@ -170,7 +195,6 @@ I use regular diagnostics to examine whether those models perform well: checking
 
 ### _Diagnotic plots for three models_
 
-<div style= "float:left;position: relative; top: 0px; left: 0px;">
 
 ```{r lm model}
 #model 1: linear model (linear regression)
@@ -212,7 +236,7 @@ resid.vs.pred <- function(mdl, pred='fitted', data, standardized=TRUE, ...) {
 }
 ```
 
-```{r residuals plots and QQ-plot for lm model,warning= FALSE,fig.height = 2.5,fig.cap="Above linear model"}
+```{r residuals plots and QQ-plot for lm model,warning= FALSE,fig.height = 2.5,fig.cap="Above linear model",include=F}
 par(mfrow=c(1,2))
 
 plot(mob.lm,which=c(1,2))
@@ -237,7 +261,7 @@ library(np)
 mob.np<-npreg(Mobility~Income+School_spending+Student_teacher_ratio+Graduation+Urban+Racial_Segregation,data=mobility)
 ```
 
-```{r residuals plots and QQ-plot for np model,fig.height = 2.5,fig.cap="Above kernel regression"}
+```{r residuals plots and QQ-plot for np model,fig.height = 2.5,fig.cap="Above kernel regression",include=F}
 par(mfrow=c(1,2))
 plot(x=fitted(mob.np),y=residuals(mob.np))
 abline(h=0,lty="dotted")
@@ -265,7 +289,7 @@ qqline(residuals(mob.np))
 mob.gam<-gam(Mobility ~ s(Income)+s(School_spending)+s(Student_teacher_ratio)+s(Graduation)+Urban+Racial_Segregation,data=mobility)
 ```
 
-```{r residuals plots and QQ-plot for gam,fig.height = 2.5,fig.cap="Above generalized additive model"}
+```{r residuals plots and QQ-plot for gam,fig.height = 2.5,fig.cap="Above generalized additive model",include=F}
 par(mfrow=c(1,2))
 
 plot(predict(mob.gam,newdata=mobility),residuals(mob.gam))
@@ -288,15 +312,7 @@ qq.gam(mob.gam, type="deviance",pch=1)
 #abline(h=0,col="red")
 ```
 
-</div>
-
-Six figures on the left are diagnostic plots for three different models (the first row for linear regression; the second row for kernel regression and the third row for the generalized additive model). They are quite similar in some way.
-
-For the linear regression model (two figures in the first row), the plot of residuals against fitted value show that although the means of the residuals are close to zero, the variance is not constant, that is, heteroscedasticity is not satisfied. And from the QQ-plot, there is a heavy tail on the right, indicating the residuals are not normally distributed. Also, there are several outliers shown in the plots. To summarize linear regression model does not satisfy both heteroscedasticity and normality.
-
-The diagnostic plots of the kernel regression model (second row) are quite like the plots of the linear regression model. In residual plots, residuals do not have constant variance; in QQ-plot, there is a heavy tail on the right. The kernel regression model also does not satisfy both heteroscedasticity and normality.
-
-As for the third model, generalized additive model, the diagnostic plots are similar to above two pairs. That may because of the dataset itself, the distribution of some predictors are not normal, which may influence some parametric tests as well as the heteroscedasticity and normality of the residuals.
+The diagnotic plot of all three models look similar. The plot of residuals against fitted value show that although the means of the residuals are close to zero, the variance is not constant, that is, homoscedasticity is not satisfied. And from the QQ-plot, there is a heavy tail on the right, indicating the residuals are not normally distributed. Also, there are several outliers shown in the plots. To summarize, there is no pattern showing that one model is better than the other two; all three models do not satisfy both heteroscedasticity and normality.
 
 # Model selection of linear regression
 
@@ -347,7 +363,7 @@ for (School_spending in c(1,0)){
     }
 ```
 
-The leave-one-out cross-validation is a model validation technique. To be more specific, we are going to fit all 16 models to 15 datasets, leaving one model out (the original model), examing how accurate a prediction model will perform in other 15 datasets. Then we will compare the mean squared error for all 16 models and determine the best model.
+The leave-one-out cross-validation is a model validation technique. To be more specific, we are going to fit all 16 models to 550 observations (there are totally 551 observations in the dataset after removing NAs and outliers ), leaving one out, examing how accurate a prediction model will perform using testing mean square error.
 
 ```{r divide the dataset into two parts}
 set.seed(2) #fix random sampling
@@ -425,6 +441,8 @@ gam.cvmse<-cv.gam(mob.gam)
 
 table<-cbind(Models=c("Linear regression","Linear regression from model selection","Kernel regression","Generalized additive model"),
       MSE=c(format(round(lm.cvmse,digits=5),scientific=F),format(round(lm2.cvmse,digits=5),scientific=F,nsmll=),format(round(npreg.cvmse,digits=5),scientific=F),format(round(gam.cvmse,digits=5),scientific=F)))
+
+colnames(table)<-c("Models"," Testing MSE")
 
 kable(table) %>%
   kable_styling(bootstrap_options=c("striped", "hover"))
