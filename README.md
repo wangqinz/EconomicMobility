@@ -13,4 +13,4 @@
 
 ** Need more observations.
 
-** Try: fix the state variations using dummy variables.
+** Fix the state variations using dummy variables.
