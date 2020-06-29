@@ -1,4 +1,4 @@
-# Economic-Mobility
+# Economic Mobility
 
 ## Intro
 
